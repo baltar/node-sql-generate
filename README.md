@@ -4,7 +4,8 @@
 [![NPM version](https://badge.fury.io/js/sql-generate.png)](http://badge.fury.io/js/sql-generate)
 
 This library is a command line tool/API for automatically generating
-definitions usable by the [node-sql](https://github.com/brianc/node-sql) library.
+definitions usable by the [node-sql](https://github.com/brianc/node-sql) library,
+or by the [Waterline ORM](https://github.com/balderdashy/waterline) which is also used by sailsjs.
 It inspects your database and generates JavaScript.
 
 Currently there is support for MySQL and Postgres.
@@ -68,6 +69,7 @@ Omitting it will assume a schema of "public".
     --dsn <dsn>               Connection string
     -d, --dialect <dialect>   Specify the SQL dialect: "mysql" or "pg"
     -o, --output-file <file>  Output to this file; defaults to stdout
+    -w, --waterline           generate models for Waterline ORM (the camelize and includeSchema options are then ignored)
     -i, --indent <token>      Indentation token; defaults to a TAB character
     -D, --database <name>     Name of database to extract from
     -s, --schema <name>       Name of schema to extract from (Postgres only)
