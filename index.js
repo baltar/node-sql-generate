@@ -14,6 +14,7 @@ var supportedDialects = {
  * @param {String} options.dialect Either "mysql" or "pg"
  * @param {String} options.dsn The DSN to use to connect to the database
  * @param {String} options.schema The name of the schema/database to extract from
+ * @param {Boolean} [options.waterline] If true, generate models for Waterline ORM. If true, the camelize and includeSchema options are ignored.
  * @param {String} [options.indent] String to use for indentation of generated code, defaults to "\t"
  * @param {String|Number} [options.outputFile] Filename to write to, or the number 1 to write to stdout
  * @param {Boolean} [options.camelize] Convert underscored names to camel case ("foo_bar" -> "fooBar")
@@ -297,7 +298,10 @@ module.exports = function(options, callback) {
 			});
 		} else {
 			functions.push(function(next) {
-				write('var sql = require(\'sql\');', options.eol, next);
+                var require_statement = options.waterline ?
+                    'var Waterline = require(\'waterline\');'
+                    : 'var sql = require(\'sql\');';
+				write(require_statement, options.eol, next);
 			});
 		}
 
@@ -312,6 +316,8 @@ module.exports = function(options, callback) {
 	}
 
 	function processTables(next) {
+        var createModelFn = options.waterline ? createWaterlineModel : createNodeSqlModel;
+
 		function writeTable(tableName, next) {
 			var start = Date.now(),
 				//indent everything by one if modularize is set
@@ -325,52 +331,112 @@ module.exports = function(options, callback) {
 
 				log('debug', '  Found ' + columnData.length + ' columns');
 
-				var args = [],
-					fullName = (options.schema || options.database) + '.' + tableName;
-
-				if (!options.omitComments) {
-					args.push(indent + '/**');
-					args.push(indent + ' * SQL definition for ' + fullName);
-					args.push(indent + ' */');
-				}
-
-				args.push(indent + 'exports.' + camelize(tableName) + ' = sql.define({');
-				args.push(indent + options.indent + 'name: \'' + tableName + '\',');
-				if (options.includeSchema) {
-					args.push(indent + options.indent + 'schema: \'' + (options.schema || options.database) + '\',');
-				}
-				args.push(indent + options.indent + 'columns: [');
-
-				args.push(columnData.map(function(column) {
-					var columnString = indent + options.indent + options.indent + '{ ' +
-						'name: \'' + column.name + '\'';
-
-					if (options.camelize) {
-						columnString += ', property: \'' + camelize(column.name) + '\'';
-					}
-					columnString += ' }';
-
-					return columnString;
-				}).join(',' + options.eol));
-
-				args.push(indent + options.indent + ']');
-				args.push(indent + '});');
-				args.push(options.eol);
-
-				args.push(function(err) {
-					if (!err) {
-						log('debug', '  ...finished! (' + (Date.now() - start) + 'ms)');
-					}
-
-					next(err);
-				});
-
+                var args = createModelFn(indent, tableName, (options.schema || options.database) + '.' + tableName, columnData);
+                args.push(function(err) {
+                    if (!err) {
+                        log('debug', '  ...finished! (' + (Date.now() - start) + 'ms)');
+                    }
+                    next(err);
+                });
 				write.apply(null, args);
 			});
 		}
 
 		async.eachSeries(tableNames, writeTable, next);
 	}
+
+    function createNodeSqlModel(indent, tableName, fullName, columnData) {
+        var args = [];
+
+        if (!options.omitComments) {
+            args.push(indent + '/**');
+            args.push(indent + ' * SQL definition for ' + fullName);
+            args.push(indent + ' */');
+        }
+
+        args.push(indent + 'exports.' + camelize(tableName) + ' = sql.define({');
+        args.push(indent + options.indent + 'name: \'' + tableName + '\',');
+        if (options.includeSchema) {
+            args.push(indent + options.indent + 'schema: \'' + (options.schema || options.database) + '\',');
+        }
+        args.push(indent + options.indent + 'columns: [');
+
+        args.push(columnData.map(function(column) {
+            var columnString = indent + options.indent + options.indent + '{ ' +
+                'name: \'' + column.name + '\'';
+
+            if (options.camelize) {
+                columnString += ', property: \'' + camelize(column.name) + '\'';
+            }
+            columnString += ' }';
+
+            return columnString;
+        }).join(',' + options.eol));
+
+        args.push(indent + options.indent + ']');
+        args.push(indent + '});');
+        args.push(options.eol);
+
+        return args;
+    }
+
+    var MYSQL_WATERLINE_TYPE_MAP = {
+
+        int: 'integer',
+        integer: this.int,
+        bigint: this.int,
+        smallint: this.int,
+        tinyint: this.int,
+
+        text: 'text',
+
+        varchar: 'string',
+
+        decimal: 'float',
+        double: this.decimal,
+
+        datetime: 'datetime',
+        timestamp: this.datetime,
+
+        point: 'string'
+    };
+
+    function waterlineAttribute(column, indent) {
+        if(MYSQL_WATERLINE_TYPE_MAP.hasOwnProperty(column.type)) {
+            return '{ ' + options.eol
+                + indent + options.indent + ' type: ' + MYSQL_WATERLINE_TYPE_MAP[column.type] + options.eol
+                + indent + options.indent + ' required: ' + (column.nullable === 'NO') + options.eol
+                + indent + ' }';
+        } else {
+            log('error', 'Unknown column type ' + column.data_type);
+            process.exit(1);
+        }
+    }
+
+    function createWaterlineModel(indent, tableName, fullName, columnData) {
+        var args = [];
+
+        if (!options.omitComments) {
+            args.push(indent + '/**');
+            args.push(indent + ' * Model definition for ' + fullName);
+            args.push(indent + ' */');
+        }
+
+        args.push(indent + 'exports.' + camelize(tableName) + ' = Waterline.Collection.extend({');
+        args.push(indent + options.indent + 'identity: \'' + tableName + '\',');
+        args.push(indent + options.indent + 'attributes: {');
+
+        args.push(columnData.map(function(column) {
+            return indent + options.indent + options.indent + column.name + ': '
+                + waterlineAttribute(column, indent + options.indent + options.indent);
+        }).join(',' + options.eol));
+
+        args.push(indent + options.indent + '}');
+        args.push(indent + '});');
+        args.push(options.eol);
+
+        return args;
+    }
 
 	function writeTail(next) {
 		if (options.modularize) {
