@@ -8,7 +8,7 @@ program
 	.option('--dsn <dsn>', 'Connection string')
 	.option('-d, --dialect <dialect>', 'Specify the SQL dialect: "mysql" or "pg"')
 	.option('-o, --output-file <file>', 'Output to this file; defaults to stdout')
-    .option('-w, --waterline', 'generate models for Waterline ORM (the camelize and includeSchema options are then ignored)')
+    .option('-t, --target <name>', 'Can be node-sql, waterline or plain. Defaults to node-sql.')
     .option('-i, --indent <token>', 'Indentation token; defaults to a TAB character', '\t')
 	.option('-D, --database <name>', 'Name of database to extract from')
 	.option('-s, --schema <name>', 'Name of schema to extract from (Postgres only)')
