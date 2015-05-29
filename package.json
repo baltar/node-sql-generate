@@ -21,7 +21,6 @@
     "commander": "2.1.0",
     "lodash": "^3.3.1",
     "mysql": "2.0.1",
-    "pg": "2.11.1",
     "sql": "0.35.0"
   },
   "devDependencies": {
