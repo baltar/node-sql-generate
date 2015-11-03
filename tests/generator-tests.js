@@ -96,11 +96,11 @@ describe('generator', function() {
 					switch (dialect) {
 						case 'mysql':
 							client = db.createConnection(dsn + '?multipleStatements=true');
-							client.connect(runScripts);
+							client.connectClient(runScripts);
 							break;
 						case 'pg':
 							client = new db.Client(dsn);
-							client.connect(runScripts);
+							client.connectClient(runScripts);
 							break;
 					}
 				});

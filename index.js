@@ -266,7 +266,7 @@ module.exports = function(options, callback) {
 
 	function connect(next) {
 		log('debug', 'Attempting connection with DSN "' + options.dsn + '"');
-		client.connect(next);
+		client.connectClient(next);
 	}
 
 	function writeHead(next) {
