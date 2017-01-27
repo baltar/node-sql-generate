@@ -266,7 +266,7 @@ module.exports = function(options, callback) {
 
 	function connect(next) {
 		log('debug', 'Attempting connection with DSN "' + options.dsn + '"');
-		client.connectClient(next);
+		client.connect(next);
 	}
 
 	function writeHead(next) {
@@ -309,7 +309,7 @@ module.exports = function(options, callback) {
                     case 'waterline':
                         require_statement = 'var Waterline = require(\'waterline\');';
                         break;
-                };
+				}
 				write(require_statement, options.eol, next);
 			});
 		}
@@ -332,8 +332,7 @@ module.exports = function(options, callback) {
                 break;
             case 'plain':
                 createModelFn = createPlainModel;
-        };
-
+		}
 		function writeTable(tableName, next) {
 			var start = Date.now(),
 				//indent everything by one if modularize is set
